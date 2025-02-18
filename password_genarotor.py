@@ -1,5 +1,3 @@
-#This will properly have the functions which i don't need in the main input because i don't like how it looks if it's like this
-#Might not even used it
 import string
 from random import shuffle
 
@@ -18,7 +16,7 @@ shuffle(s4)
 part1 = round(number_of_characters * (30/100))
 part2 = round(number_of_characters * (20/100))
 
-def Strong_passkey(Number_of_characters=10):
+def Strong_password(Number_of_characters=10):
     password = []
     for i in range(part1):
         password.append(s1[i])
