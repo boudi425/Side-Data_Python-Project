@@ -5,7 +5,7 @@ import sys
 import os
 import random
 import datetime
-import pandas as pd
+import json
 from Side_Funcitons import Strong_passkey
 
 #This project will feature simple ideas like data management, analyzing and manipulation, Also feature some good functionally and security 
@@ -96,7 +96,10 @@ class Sign_up:
                 self.passkey = self.Password
             elif Passkey_Type == "Passkey":
                 self.passkey = self.Generate_Passkey()
+                self.passkey = json.dumps(self.passkey)
                 print(f"This is your passkey: {self.passkey}")
+                with open("Passkeys.txt", "w") as Passkey_Writer:
+                    Passkey_Writer.writelines(self.passkey)
             elif Passkey_Type == "Email":
                 email = input("Enter your Email: ")
                 self.passkey = email
@@ -121,7 +124,7 @@ class Login:
         self.Name = ''
         self.Password = ''
     def Get_Access(self):
-        Names = Cur.execute("SELECT Name FROM Users_Data")
+        Names = Cur.execute("SELECT Name FROM Users_Data").fetchone()
         if Names is None:
             print("Can't Login Because there is no users in the database")
             return False
@@ -130,48 +133,55 @@ class Login:
         User_Data_Login = []
         print("Login Slide")
         print("Enter your Name: ")
-        Login_Name = input("> ")
-        Login_Names = Cur.execute("SELECT Name FROM Users_Data").fetchall()
-        Names = [row[0] for row in Login_Names]    
-        if Login_Name.capitalize() not in Names:
-            print(f"{Login_Name} isn't Available in the database")
-        User_Data_Login += Cur.execute("SELECT * FROM Users_Data WHERE Name = ?", (Login_Name.capitalize(),)).fetchone()
-        if Login_Name.capitalize() in Names:
-            print(f"Welcome Back {Login_Name.capitalize()}")
-            print("Enter your Password: ")
-            while True:
-                Login_Password = input("> ")
-                if User_Data_Login[2] == Login_Password:
-                    print("Correct!, Now let's check the F2A")
-                else:
-                    print("Wrong Password, Please try again")
-        else: 
-            print("Wrong Input, Please try again")
         while True:
-            print(f"Enter your Passkey (Your Passkey_Type{User_Data_Login[3]}): ")
-            if User_Data_Login[3] == "Password":
-                print("Access granted")
-                break
-            elif User_Data_Login[3] == "Passkey":
-                print("Enter your Passkey: ")
+            Login_Name = input("> ")
+            Login_Names = Cur.execute("SELECT Name FROM Users_Data").fetchall()
+            Names = [row[0] for row in Login_Names]    
+            if Login_Name.capitalize() not in Names:
+                print(f"{Login_Name} isn't Available in the database")
+            try:
+                User_Data_Login += Cur.execute("SELECT * FROM Users_Data WHERE Name = ?", (Login_Name.capitalize(),)).fetchone()
+            except TypeError:
+                print("Try to Enter A Name Again")
+                continue
+            if Login_Name.capitalize() in Names:
+                print(f"Welcome Back {Login_Name.capitalize()}")
+                print("Enter your Password: ")
                 while True:
-                    Login_Passkey = input("> ")
-                    if Login_Passkey in User_Data_Login[4]:
-                        print("Access Granted")
+                    Login_Password = input("> ")
+                    if User_Data_Login[2] == Login_Password:
+                        print("Correct!, Now let's check the F2A")
                         break
                     else:
-                        print("Wrong Passkey, Please check your passkey file")
-            elif User_Data_Login[3] == "Email":
-                print("Enter your Email: ")
-                while True:
-                    Login_Email = input("> ")
-                    if Login_Email in User_Data_Login[4]:
-                        print("Access Granted")
-                        break
-                    else:
-                        print("Wrong Email, Please check your Email")
-            else:
-                print("What in the world is this?")
+                        print("Wrong Password, Please try again")
+            else: 
+                print("Wrong Input, Please try again")
+            while True:
+                print(f"Enter your Passkey (Your Passkey_Type: ({User_Data_Login[3]}): ")
+                if User_Data_Login[3] == "Password":
+                    print("Access granted")
+                    break
+                elif User_Data_Login[3] == "Passkey":
+                    print("Enter your Passkey: ")
+                    while True:
+                        Login_Passkey = input("> ")
+                        if Login_Passkey in json.loads(User_Data_Login[4]):
+                            print("Access Granted")
+                            break
+                        else:
+                            print("Wrong Passkey, Please check your passkey file")
+                elif User_Data_Login[3] == "Email":
+                    print("Enter your Email: ")
+                    while True:
+                        Login_Email = input("> ")
+                        if Login_Email in User_Data_Login[4]:
+                            print("Access Granted")
+                            break
+                        else:
+                            print("Wrong Email, Please check your Email")
+                else:
+                    print("What in the world is this?")
+            break
         return True, Login_Name
             # I should Kys
             # I Hate Data Manipulation 
@@ -283,7 +293,7 @@ class System:
             if user_choice.capitalize() == "Sign up" or user_choice == "1":
                 Sign_up_Content = self.signUp_Start()
             elif user_choice.capitalize() == "Login" or user_choice == "2":
-                Login_user_Name = self.Login_System_Start()
+                Login_user_Name = self.Login_Start()
             elif user_choice.capitalize() == "Quit" or user_choice == "3":
                 print("Thanks for using our app <3")
                 sys.exit()
