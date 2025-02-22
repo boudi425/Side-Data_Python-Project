@@ -182,7 +182,9 @@ class Login:
                 else:
                     print("What in the world is this?")
             break
-        return True, Login_Name
+        ID = Cur.execute("SELECT ID FROM Users_Data WHERE Name = ?", (Login_Name,)).fetchone()
+        Dic = {"Access": True, "ID": ID, "Name": Login_Name}
+        return Dic
             # I should Kys
             # I Hate Data Manipulation 
             #0 Id , 1 Name , 2 Password , 3 Passkey_Choice, 4 Passkey
@@ -235,13 +237,14 @@ class Post:
         else:
             print("Please Enter Yes or No (For Quit Type 'Quit'")
     def Get_Today_Date(self):
-        Today_date = datetime.datetime.now().date
+        Today_date = datetime.datetime.now().date()
         return Today_date
     def Insert_Data(self, Title, Body, Date, UserID):
-        Cur.execute("""INSERT INTO Articles_Data(User_ID, Name_Of_Article, Body_Of_Article, Date_Of_Article) VALUES(?, ?, ?, ?)""", (UserID, Title, Body, Date))
+        Cur.execute("""INSERT INTO Articles_Data(User_ID, Article_Name, Article_Body, Article_Date) VALUES(?, ?, ?, ?)""", (UserID, Title, Body, Date))
         con.commit()
     #Post Class/Functions are DONE!!!!!
 Name = None
+User_ID = None 
 #------------------------------------------------------------------------
 #The System class!, Might be the biggest one of them
 #Three classes in one class, Combing to Produce the well build program and more
@@ -271,18 +274,18 @@ class System:
         result = Cur.execute("SELECT * FROM Users_Data WHERE Name = ?", (Name,)).fetchone()
         Dic = {"ID": result[0], "Name": result[1], "Password": result[2], "Passkey_choice": result[3], "Passkey": result[4]}
         self.Login_Start()
-        return Dic
+        return Dic["ID"]
     def Login_Start(self):
         Access = self.Login_System.Get_Access()
         if Access:
             Access_To_System = self.Login_System.Login_User_Data_Manipulation()
-            Dic = {"Access": Access_To_System[0], "Name": Access_To_System[1]}
+            Dic = {"Access": Access_To_System[0], "ID": Access_To_System[1]}
             if Dic["Access"]:
                 input("Press Enter to continue")
         else:
             print("try to sign up first")
             self.signUp_Start()
-        return Dic["Name"]
+        return Dic["ID"]
     def Start_System(self):
         print("Choose from the following: ")
         print("1. Sign up")
@@ -291,33 +294,38 @@ class System:
         while True:
             user_choice = input("> ")
             if user_choice.capitalize() == "Sign up" or user_choice == "1":
-                Sign_up_Content = self.signUp_Start()
+                User_ID = self.signUp_Start()
+                break
             elif user_choice.capitalize() == "Login" or user_choice == "2":
-                Login_user_Name = self.Login_Start()
+                User_ID = self.Login_Start()
+                break
             elif user_choice.capitalize() == "Quit" or user_choice == "3":
                 print("Thanks for using our app <3")
                 sys.exit()
             else:
                 print("PLease enter a correct input")
-            
-            print("""Hello and Welcome, Thanks for login in
-            Now you are in the posting side where you can post or see other people posts
-            You can also see your own posts if you want to or Make one, And don't worry
-            Your Articles and Data is all saved , if want to Log out Just Type (Quit)""")
-            input("Press Enter to continue......")
-            print("1. Post")
-            print("2. See Posts")
-            print("3. Search")
-            print("4. See Your Posts")        
-            print("5. Logout or Quit")
-            while True:
+                continue
+        print("""Hello and Welcome, Thanks for login in
+        Now you are in the posting side where you can post or see other people posts
+        You can also see your own posts if you want to or Make one, And don't worry
+        Articles and Data is all saved , if want to Log out Just Type (Quit)""")
+        input("Press Enter to continue......")
+        while True:
+                print("1. Post")
+                print("2. See Posts")
+                print("3. See Your Posts")
+                print("4. Search")        
+                print("5. Logout or Quit")
                 Choice = input("> ")
                 Choice.capitalize()
                 if Choice == "1" or Choice.capitalize() == "Post":
                     Article_Title = self.Posting.Get_Title()
                     Article_Content = self.Posting.Get_Body()
                     Article_Date = self.Posting.Get_Today_Date()
-                    self.Posting.Insert_Data(Sign_up_Content["ID"] ,Article_Title, Article_Content, Article_Date)
+                    if isinstance(User_ID, tuple):
+                        User_ID = User_ID[0]
+                    self.Posting.Insert_Data(Article_Title ,Article_Content , Article_Date, User_ID)
+                    print("Article Saved Successfully!")
                 elif Choice == "2" or Choice.capitalize() == "See posts":
                     self.See_Posts()
                 elif Choice == "3" or Choice.capitalize() == "See your posts":
@@ -359,8 +367,9 @@ class System:
             else:
                 return self.Show_Selected_Post(response)
     def See_Your_Posts(self):
-        Chosen_ID = Cur.execute("SELECT ID FROM User_Data WHERE Name = ?",(Name,)).fetchone()
-        UserName_Articles = Cur.execute("SELECT Article_Name ,Article_Body ,Article_Date FROM Articles_Data WHERE User_ID = ?",(Chosen_ID,)).fetchall()
+        if isinstance(User_ID, tuple):
+            User_ID = User_ID[0]
+        UserName_Articles = Cur.execute("SELECT Article_Name ,Article_Body ,Article_Date FROM Articles_Data WHERE User_ID = ?",(User_ID,)).fetchall()
         Dic = {"Name": UserName_Articles[0], "Content": UserName_Articles[1], "Date": UserName_Articles[2]}
         return self.Generate_Article_Design(Dic["Name"], Dic["Content"], Dic["Date"])
     def Show_Selected_Post_Int(self, Choice):
