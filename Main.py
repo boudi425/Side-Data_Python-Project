@@ -264,6 +264,7 @@ class System:
         self.Sign_Up_System = Sign_up()
         self.Login_System = Login()
         self.Posting = Post()
+        self.User_ID = 0
     def signUp_Start(self):
         Sign_Name = self.Sign_Up_System.get_Name()
         Name = Sign_Name
@@ -271,15 +272,14 @@ class System:
         Passkey = self.Sign_Up_System.Get_Passkey()
         self.Sign_Up_System.insertData(Sign_Name, Password, Passkey["Passkey_Type"], Passkey["Passkey"])
         print("Sign up successful, Now you can login")
-        result = Cur.execute("SELECT * FROM Users_Data WHERE Name = ?", (Name,)).fetchone()
-        Dic = {"ID": result[0], "Name": result[1], "Password": result[2], "Passkey_choice": result[3], "Passkey": result[4]}
+        result = Cur.execute("SELECT ID FROM Users_Data WHERE Name = ?", (Name,)).fetchone()
+        Dic = {"ID": result[0]}
         self.Login_Start()
         return Dic["ID"]
     def Login_Start(self):
         Access = self.Login_System.Get_Access()
         if Access:
-            Access_To_System = self.Login_System.Login_User_Data_Manipulation()
-            Dic = {"Access": Access_To_System[0], "ID": Access_To_System[1]}
+            Dic = self.Login_System.Login_User_Data_Manipulation()
             if Dic["Access"]:
                 input("Press Enter to continue")
         else:
@@ -295,9 +295,11 @@ class System:
             user_choice = input("> ")
             if user_choice.capitalize() == "Sign up" or user_choice == "1":
                 User_ID = self.signUp_Start()
+                self.User_ID += User_ID[0]
                 break
             elif user_choice.capitalize() == "Login" or user_choice == "2":
                 User_ID = self.Login_Start()
+                self.User_ID += User_ID[0]
                 break
             elif user_choice.capitalize() == "Quit" or user_choice == "3":
                 print("Thanks for using our app <3")
@@ -367,11 +369,13 @@ class System:
             else:
                 return self.Show_Selected_Post(response)
     def See_Your_Posts(self):
-        if isinstance(User_ID, tuple):
-            User_ID = User_ID[0]
-        UserName_Articles = Cur.execute("SELECT Article_Name ,Article_Body ,Article_Date FROM Articles_Data WHERE User_ID = ?",(User_ID,)).fetchall()
-        Dic = {"Name": UserName_Articles[0], "Content": UserName_Articles[1], "Date": UserName_Articles[2]}
-        return self.Generate_Article_Design(Dic["Name"], Dic["Content"], Dic["Date"])
+        print("Hello?")
+        UserName_Articles = Cur.execute("""SELECT u.Name , a.Article_Name, a.Article_Body,
+                                a.Article_Date FROM Users_Data AS u JOIN Articles_Data AS a
+                                ON u.ID = a.User_ID AND a.User_ID = ?;""", (self.User_ID,)).fetchall()
+        print(UserName_Articles)
+        for Article in UserName_Articles:
+            yield self.Generate_Article_Design(*Article)
     def Show_Selected_Post_Int(self, Choice):
         Articles = Cur.execute("""SELECT u.Name , a.Article_Name, a.Article_Body,
                                 a.Article_Date FROM Users_Data AS u JOIN Articles_Data AS a
@@ -390,10 +394,9 @@ class System:
         return self.Generate_Article_Design(Article_Dic["Name"], Article_Dic["Body"], Article_Dic["Date"], Article_Dic["ID"])
     def Search_Engine(self, algo):
         pass
-    def Generate_Article_Design(self, Name, Content, Date, Author):
+    def Generate_Article_Design(self, Author, Content, Date, Name):
         print(f"\t {Name}")
         print(f"\t {Content}")
         print(f"\t {Date} --- By {Author}")
-        
 Test = System()
 Test.Start_System()
