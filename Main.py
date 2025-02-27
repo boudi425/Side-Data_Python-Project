@@ -6,7 +6,7 @@ import os
 import random
 import datetime
 import json
-from Side_Funcitons import Strong_passkey
+from Side_Funcitons import Strong_passkey, hash_password, verify_password
 
 #This project will feature simple ideas like data management, analyzing and manipulation, Also feature some good functionally and security 
 #It will be an app with login, Sign up and logout (Not GUI unfortunately But i will try to give it a try)
@@ -61,6 +61,7 @@ class Sign_up:
                 print("Password is too short, Please try again")
             else:
                 break
+        self.Password = hash_password(self.Password)
         return self.Password
     def Generate_Passkey(self):
         Passkeys = []
@@ -149,7 +150,7 @@ class Login:
                 print("Enter your Password: ")
                 while True:
                     Login_Password = input("> ")
-                    if User_Data_Login[2] == Login_Password:
+                    if verify_password(Login_Password, User_Data_Login[2]):
                         print("Correct!, Now let's check the F2A")
                         break
                     else:
@@ -295,7 +296,7 @@ class System:
             user_choice = input("> ")
             if user_choice.capitalize() == "Sign up" or user_choice == "1":
                 User_ID = self.signUp_Start()
-                self.User_ID += User_ID[0]
+                self.User_ID += User_ID[0] if isinstance(User_ID, tuple) else User_ID
                 break
             elif user_choice.capitalize() == "Login" or user_choice == "2":
                 User_ID = self.Login_Start()
@@ -342,12 +343,10 @@ class System:
                 else:
                     print("Please Enter a Valid Input")
     def See_Posts(self):
-        result = Cur.execute("""SELECT u.Name , a.Article_Name, a.Article_Body,
-                                a.Article_Date FROM Users_Data AS u JOIN Articles_Data AS a
-                                ON u.ID = a.User_ID;""").fetchall()
+        result = Cur.execute("SELECT Article_Name FROM Articles_Data").fetchall()
         Total = 1
-        for Num, (Name, Title) in enumerate(result[0:1], start=1):
-            print(f"#{Num}. {Title} by {Name}")
+        for Num, Title in enumerate(result[0], start=1):
+            print(f"#{Num}. {Title}")
             Total += 1
         print(f"{Total}. Quit")
         print("Enter The Name or The Number of the Article to Open it: ")
@@ -356,10 +355,11 @@ class System:
             if int(response) == Total:
                 print("Thanks for using my program")
                 sys.exit()
-            elif int(response) > len(result[1]):
+            elif int(response) > (len(result[0])+1):
                 print("Not a valid option, try again")
             else:
-                return self.Show_Selected_Post_Int(int(response))
+                Choice = result[0][int(response)-1]
+                return self.Show_Selected_Post(Choice)
         elif response.isalpha():
             if response == "Quit":
                 print("Thanks for using my program")
@@ -376,27 +376,38 @@ class System:
         print(UserName_Articles)
         for Article in UserName_Articles:
             yield self.Generate_Article_Design(*Article)
-    def Show_Selected_Post_Int(self, Choice):
-        Articles = Cur.execute("""SELECT u.Name , a.Article_Name, a.Article_Body,
-                                a.Article_Date FROM Users_Data AS u JOIN Articles_Data AS a
-                                ON u.ID = a.User_ID;""").fetchall()
-        Article_Chosen = Articles[1][Choice]
-        Article_User_Name = Cur.execute("SELECT Article_Name, Article_Body, Article_Date FROM Articles_Data WHERE Article_Name = ?", (Article_Chosen,))
-        Article_Dic = {"ID": Article_User_Name[0] ,"Name": Article_User_Name[1], "Body": Article_User_Name[2], "Date": Article_User_Name[3]}
-        return self.Generate_Article_Design(Article_Dic["Name"], Article_Dic["Body"], Article_Dic["Date"], Article_Dic["ID"])
     def Show_Selected_Post(self, Choice):
         Articles = Cur.execute("""SELECT u.Name , a.Article_Name, a.Article_Body,
                                 a.Article_Date FROM Users_Data AS u JOIN Articles_Data AS a
-                                ON u.ID = a.User_ID;""").fetchall()
-        Article_Chosen = Articles[1].index(Choice)
-        Article_User_Name = Cur.execute("SELECT User_ID ,Article_Name, Article_Body, Article_Date FROM Articles_Data WHERE Article_Name = ?", (Article_Chosen,))
-        Article_Dic = {"ID": Article_User_Name[0] ,"Name": Article_User_Name[1], "Body": Article_User_Name[2], "Date": Article_User_Name[3]}
-        return self.Generate_Article_Design(Article_Dic["Name"], Article_Dic["Body"], Article_Dic["Date"], Article_Dic["ID"])
+                                ON u.ID = a.User_ID WHERE a.Article_Name = ?;""", (Choice,)).fetchone()
+        Article_Dic = {"Name": Articles[0], "Article_Title": Articles[1], "Article_Content": Articles[2], "Date": Articles[3]}
+        return self.Generate_Article_Design(Article_Dic["Name"], Article_Dic["Article_Content"], Article_Dic["Date"], Article_Dic["Article_Title"])
     def Search_Engine(self, algo):
-        pass
-    def Generate_Article_Design(self, Author, Content, Date, Name):
-        print(f"\t {Name}")
-        print(f"\t {Content}")
-        print(f"\t {Date} --- By {Author}")
+        Result = Cur.execute("SELECT Article_Name, Article_Body, Article_Date, User_ID FROM Articles_Data LIKE ? COLLATE NOCASE", (f"%{algo}%")).fetchall()
+        for Num, post in enumerate(Result, start=1):
+            print("Similar Articles:")
+            Result_Dic = {"Title": post[0], "Content": post[1], "Date": post[2]}
+            print(f"#{Num} {Result_Dic['Title']}")
+        while True:
+            print("Did you find what where you are looking for?: (Yes or No)")
+            response = input("> ")
+            if response.capitalize == "Yes":
+                print("Enter the name of the article then: ")
+                choice = input("> ")
+                Temporary_Data = Cur.execute("SELECT Article_Name FROM Articles_Data").fetchall()
+                if choice.capitalize() in Temporary_Data[0]:
+                    User_Final_Choice = Cur.execute("SELECT User_ID, Article_Body, Article_Date FROM Articles_Data WHERE Article_Name = ?", (choice.capitalize(),)).fetchone()
+                    User_Name = Cur.execute("SELECT Name FROM Users_Data WHERE ID = ?", (User_Final_Choice[0],)).fetchone()
+                    return self.Generate_Article_Design(User_Name, User_Final_Choice[1], User_Final_Choice[2], choice.capitalize())
+                else:
+                    print(f"Wrong Input , Nothing in the database is named {choice.capitalize()}")
+            elif response.capitalize() == "No":
+                print("Sorry to hear that , maybe try to search again...")
+                break
+    def Generate_Article_Design(Author, Content, Date, Name):
+        print(f"\n{'='*40}")
+        print(f"Title: {Name}")
+        print(f"By: {Author} on {Date}")
+        print(f"{'-'*40}\n{Content}\n{'='*40}\n")
 Test = System()
 Test.Start_System()
