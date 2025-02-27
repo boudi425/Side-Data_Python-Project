@@ -1,6 +1,6 @@
 import string
 from random import shuffle
-
+import hashlib
 s1 = list(string.ascii_lowercase)
 s2 = list(string.ascii_uppercase)
 s3 = list(string.punctuation)

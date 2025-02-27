@@ -2,7 +2,7 @@
 #Might not even used it
 import string
 from random import shuffle
-
+import hashlib
 s1 = list(string.ascii_lowercase)
 s2 = list(string.ascii_uppercase)
 s3 = list(string.punctuation)
@@ -30,6 +30,10 @@ def Strong_passkey(Number_of_characters=10):
     password = "".join(password[0:])
     return password
 
-        
-        
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()  # Hash the password
+
+def verify_password(input_password, stored_hash):
+    return hash_password(input_password) == stored_hash  # Compare hashes
+
         
